@@ -98,6 +98,9 @@ export default function HomePage() {
           <Link href="/cari" className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition-colors flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5" /> Cari Kendaraan
           </Link>
+          <Link href="/status" className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition-colors flex items-center gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" /> Status Crawler
+          </Link>
         </div>
       </header>
 

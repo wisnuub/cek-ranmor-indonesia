@@ -4,7 +4,39 @@ const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== "undefined" && window.location.hostname === "localhost"
     ? "http://localhost:8000"
-    : "https://cek-ranmor-indonesia.onrender.com");
+    : "https://api-ranmor.fortunamj.com");
+
+const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || "ranmor-admin-2025";
+
+async function adminFetch<T>(path: string, method = "GET"): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method,
+    headers: { Accept: "application/json", "x-admin-key": ADMIN_KEY },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getCrawlerStatus() {
+  return adminFetch<CrawlerStatus>("/admin/crawler/status");
+}
+
+export interface CrawlerStatus {
+  active: Record<string, {
+    running: boolean;
+    tried: number;
+    found: number;
+    last: string;
+    current_suffix: string;
+    kab?: string;
+    suffix_found: number;
+    consecutive_empty: number;
+    status: string;
+  }>;
+  crawlable_regions: string[];
+  known_suffixes: Record<string, number>;
+  prefixes: Record<string, string>;
+}
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
