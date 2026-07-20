@@ -25,41 +25,25 @@ HEADERS = {
 class JakartaAdapter(BaseSamsatAdapter):
     region_code = "jakarta"
     region_name = "DKI Jakarta"
-    needs_nik = True
+    needs_nik = False  # NIK opsional, bukan wajib — tapi site punya reCAPTCHA
 
     async def fetch(self, plate: str, nik: Optional[str] = None) -> VehicleInfo:
-        if not nik:
-            v = self._empty(plate, "NIK diperlukan untuk cek kendaraan DKI Jakarta")
-            v.catatan = "Masukkan NIK (16 digit) pemilik kendaraan"
-            return v
-
         plate_clean = plate.upper().replace(" ", "").replace("-", "")
+
+        # B5651EP → nopa="5651", noph="EP"
+        num_part = re.sub(r"[^0-9]", "", plate_clean[1:])       # strip prefix, ambil angka
+        suf_part = re.sub(r"^[A-Z]+\d+", "", plate_clean)       # hapus prefix+angka, sisa = suffix
 
         try:
             async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-                # Step 1: get CSRF token
-                r = await client.get(BASE_URL, headers=HEADERS)
-                r.raise_for_status()
-
-                soup = BeautifulSoup(r.text, "html.parser")
-                token_tag = soup.find("input", {"name": "_token"})
-                if not token_tag:
-                    return self._empty(plate, "Gagal mendapatkan token dari Samsat Jakarta")
-                token = token_tag.get("value", "")
-
-                # Step 2: POST query
-                # Form fields: nopa=angka, noph=huruf suffix, flag=2
-                # Contoh: B5651EP → nopa="5651", noph="EP"
-                num_part = re.sub(r"[^0-9]", "", plate_clean[1:])   # strip prefix B, ambil angka
-                suf_part = re.sub(r"[^A-Z]", "", plate_clean)       # semua huruf = suffix termasuk prefix? No:
-                # plate_clean = "B5651EP" → prefix=B, angka=5651, suffix=EP
-                suf_part = re.sub(r"^[A-Z]+\d+", "", plate_clean)   # hapus prefix+angka, sisa = suffix
                 payload = {
                     "nopa": num_part,
                     "noph": suf_part,
-                    "nik":  nik.strip(),
                     "flag": "2",
                 }
+                if nik:
+                    payload["nik"] = nik.strip()
+
                 resp = await client.post(BASE_URL, data=payload, headers=HEADERS)
                 resp.raise_for_status()
 
@@ -76,6 +60,15 @@ class JakartaAdapter(BaseSamsatAdapter):
         soup = BeautifulSoup(html, "html.parser")
         v = VehicleInfo(plate=plate, region=self.region_code, region_name=self.region_name)
         v.sumber = BASE_URL
+
+        # Detect CAPTCHA wall — server returned the form again instead of data
+        if "recaptcha" in html.lower() or "verifikasi captcha" in html.lower():
+            v.errors.append(
+                f"Samsat Jakarta memerlukan penyelesaian reCAPTCHA. "
+                f"Cek langsung di: {BASE_URL}"
+            )
+            v.catatan = f"Buka {BASE_URL} dan masukkan {plate} untuk cek manual."
+            return v
 
         # Check for error message
         err = soup.find(class_=re.compile(r"alert|error|warning", re.I))

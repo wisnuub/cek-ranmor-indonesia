@@ -146,7 +146,7 @@ async def _do_check(plate: str, nik: Optional[str], db: AsyncSession):
     region_code = region_info["code"]
 
     if not region_info.get("supported"):
-        return JSONResponse(202, {
+        return JSONResponse(status_code=202, content={
             "status": "unsupported",
             "plate": plate,
             "region": region_info,
@@ -164,7 +164,7 @@ async def _do_check(plate: str, nik: Optional[str], db: AsyncSession):
         raise HTTPException(500, f"Adapter untuk {region_code} tidak tersedia")
 
     if region_info.get("needs_nik") and not nik:
-        return JSONResponse(200, {
+        return JSONResponse(status_code=200, content={
             "status": "nik_required",
             "plate": plate,
             "region": region_info,

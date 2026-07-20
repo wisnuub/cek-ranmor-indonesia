@@ -4,6 +4,7 @@ export interface RegionInfo {
   name: string;
   needs_nik: boolean;
   supported: boolean;
+  needs_captcha?: boolean;
 }
 
 export interface VehicleData {

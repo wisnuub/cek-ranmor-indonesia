@@ -51,7 +51,7 @@ PLATE_TO_REGION: dict[str, str] = {
 }
 
 REGION_META: dict[str, dict] = {
-    "jakarta":    {"name": "DKI Jakarta",          "needs_nik": True,  "supported": True},
+    "jakarta":    {"name": "DKI Jakarta",          "needs_nik": False, "supported": True,  "needs_captcha": True},
     "jabar":      {"name": "Jawa Barat",            "needs_nik": False, "supported": True},
     "banten":     {"name": "Banten",                "needs_nik": True,  "supported": True},
     "jateng":     {"name": "Jawa Tengah",           "needs_nik": False, "supported": True},

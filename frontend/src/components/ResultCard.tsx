@@ -60,21 +60,45 @@ export default function ResultCard({ result }: Props) {
     );
   }
 
-  /* ── Error ──────────────────────────────────────────────────── */
+  /* ── CAPTCHA wall ──────────────────────────────────────────── */
+  const errorMsg = data?.errors?.[0] ?? "";
   if (!data || (data.errors && data.errors.length > 0 && !data.merk)) {
+    const isCaptcha = errorMsg.toLowerCase().includes("captcha");
     return (
       <div className="card mt-6 space-y-3">
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-red-100 rounded-xl">
-            <AlertCircle className="w-5 h-5 text-red-600" />
+          <div className={`p-2 rounded-xl ${isCaptcha ? "bg-orange-100" : "bg-red-100"}`}>
+            {isCaptcha
+              ? <ShieldAlert className="w-5 h-5 text-orange-600" />
+              : <AlertCircle className="w-5 h-5 text-red-600" />}
           </div>
           <div>
-            <p className="font-semibold text-gray-800">Data Tidak Ditemukan</p>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {data?.errors?.[0] || "Cek nomor polisi dan pastikan kendaraan terdaftar di Samsat."}
+            <p className="font-semibold text-gray-800 dark:text-gray-100">
+              {isCaptcha ? "CAPTCHA Diperlukan" : "Data Tidak Ditemukan"}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              {isCaptcha
+                ? `${region.name} menggunakan reCAPTCHA — tidak bisa diakses otomatis.`
+                : errorMsg || "Cek nomor polisi dan pastikan kendaraan terdaftar di Samsat."}
             </p>
           </div>
         </div>
+        {isCaptcha && data?.sumber && (
+          <a
+            href={`${data.sumber}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 text-orange-700 dark:text-orange-400 rounded-xl p-3 text-sm font-medium hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Buka Samsat {region.name} langsung →
+          </a>
+        )}
+        {isCaptcha && data?.catatan && (
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            {data.catatan}
+          </p>
+        )}
       </div>
     );
   }

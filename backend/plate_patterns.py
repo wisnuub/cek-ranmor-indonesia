@@ -141,14 +141,20 @@ SAFE_LETTERS = [c for c in ALL_LETTERS if c not in ("O",)]  # Bali pakai I, jadi
 
 def generate_smart_suffixes(region: str) -> list[str]:
     """
-    Generate suffix dalam urutan yang paling efisien:
-    1. Known single-letter first codes (per kab/kota)
-    2. Two-letter: [first_letter][A-Z]
-    3. Three-letter: [first_letter][A-Z][A-Z]
-    4. Brute-force sisa (huruf yang tidak ada di map)
+    Generate suffix dalam urutan yang paling efisien.
+
+    CATATAN PENTING: plat Indonesia SELALU minimal 2 huruf suffix.
+    Tidak ada plat seperti D5000A — yang benar D5000AA atau lebih.
+    Jadi kita SKIP semua single-letter suffix.
+
+    Urutan:
+    1. Two-letter: known_first + A-Z   (e.g. AA, AB, ..., ZZ)
+    2. Three-letter: known_first + A-Z + A-Z
+    3. Brute-force: unknown first letters (2-letter)
+    4. Brute-force: unknown first letters (3-letter)
     """
     kabkota = KABKOTA_MAP.get(region, {})
-    known_firsts = list(kabkota.keys())  # e.g. Bali: A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z
+    known_firsts = list(kabkota.keys())
     unknown_firsts = [c for c in ALL_LETTERS if c not in known_firsts]
 
     result = []
@@ -159,31 +165,23 @@ def generate_smart_suffixes(region: str) -> list[str]:
             seen.add(s)
             result.append(s)
 
-    # 1. Single letter (semua known first letters)
-    for fl in known_firsts:
-        add(fl)
-
-    # 2. Two-letter: known_first + A-Z
+    # 1. Two-letter: known_first + A-Z
     for fl in known_firsts:
         for sl in ALL_LETTERS:
             add(fl + sl)
 
-    # 3. Three-letter: known_first + A-Z + A-Z
+    # 2. Three-letter: known_first + A-Z + A-Z
     for fl in known_firsts:
         for sl in ALL_LETTERS:
             for tl in ALL_LETTERS:
                 add(fl + sl + tl)
 
-    # 4. Brute-force: unknown first letters (single)
-    for fl in unknown_firsts:
-        add(fl)
-
-    # 5. Brute-force: unknown first letters (2-letter)
+    # 3. Brute-force: unknown first letters (2-letter)
     for fl in unknown_firsts:
         for sl in ALL_LETTERS:
             add(fl + sl)
 
-    # 6. Brute-force: unknown first letters (3-letter)
+    # 4. Brute-force: unknown first letters (3-letter)
     for fl in unknown_firsts:
         for sl in ALL_LETTERS:
             for tl in ALL_LETTERS:
