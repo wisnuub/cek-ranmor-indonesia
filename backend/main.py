@@ -16,7 +16,8 @@ from cache import get as cache_get, set as cache_set, make_key
 from router import get_region_info, REGION_META
 from database import get_db, init_db
 from crud import save_vehicle, search_vehicles, get_db_stats
-from crawler import start_crawler, stop_crawler, crawler_status, CRAWLABLE_PREFIXES
+from crawler import start_crawler, stop_crawler, crawler_status, add_known_suffix, CRAWLABLE_REGIONS
+from plate_patterns import KNOWN_SUFFIXES, REGION_PRIMARY_PREFIX
 
 ADMIN_KEY = os.getenv("ADMIN_KEY", "ranmor-admin-2025")
 
@@ -217,12 +218,17 @@ async def list_regions():
 
 @app.post("/admin/crawler/start")
 async def crawler_start(
-    region: str = Query(..., description="Region code: bali, jabar, jateng, diy"),
-    delay:  float = Query(1.5, description="Seconds between requests"),
+    region: str   = Query(..., description="Region: bali, jabar, jateng, diy"),
+    delay:  float = Query(1.5, description="Detik antar request (jangan terlalu cepat)"),
+    mode:   str   = Query("all", description="all | motor | mobil"),
     _: None = Depends(require_admin),
 ):
-    """Start the background plate crawler for a region."""
-    return start_crawler(region, delay=delay)
+    """
+    Start smart plate crawler untuk satu region.
+    Phase 1: coba known suffixes dulu (cepat).
+    Phase 2: brute-force sisa kombinasi.
+    """
+    return start_crawler(region, delay=delay, mode=mode)
 
 
 @app.post("/admin/crawler/stop")
@@ -236,6 +242,31 @@ async def crawler_stop(
 @app.get("/admin/crawler/status")
 async def crawler_status_endpoint(_: None = Depends(require_admin)):
     return {
-        "active": crawler_status(),
-        "crawlable_regions": list(set(CRAWLABLE_PREFIXES.values())),
+        "active":            crawler_status(),
+        "crawlable_regions": list(CRAWLABLE_REGIONS),
+        "known_suffixes": {
+            r: len(s) for r, s in KNOWN_SUFFIXES.items()
+        },
+        "prefixes": REGION_PRIMARY_PREFIX,
+    }
+
+
+@app.post("/admin/crawler/suffix")
+async def add_suffix(
+    region: str = Query(...),
+    suffix: str = Query(..., description="Suffix baru, e.g. FCR, ADQ, KK"),
+    _: None = Depends(require_admin),
+):
+    """Tambahkan suffix yang diketahui valid ke database pattern."""
+    result = add_known_suffix(region, suffix)
+    return result
+
+
+@app.get("/admin/crawler/suffixes/{region}")
+async def list_suffixes(region: str, _: None = Depends(require_admin)):
+    """Lihat daftar known suffixes untuk satu region."""
+    return {
+        "region":  region,
+        "count":   len(KNOWN_SUFFIXES.get(region, [])),
+        "suffixes": KNOWN_SUFFIXES.get(region, []),
     }
