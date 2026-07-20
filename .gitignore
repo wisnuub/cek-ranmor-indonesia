@@ -34,6 +34,9 @@ logs/
 # Wrangler cache
 .wrangler/
 
+# Cloudflared binary (download dari https://github.com/cloudflare/cloudflared/releases)
+cloudflared.exe
+
 # Cloudflare Tunnel credentials (JANGAN di-commit!)
 .cloudflared/*.json
 
