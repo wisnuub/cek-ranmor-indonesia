@@ -1,0 +1,23 @@
+name: Deploy Backend → Railway
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy FastAPI to Railway
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        run: railway up --service cek-ranmor-api
+        working-directory: backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
