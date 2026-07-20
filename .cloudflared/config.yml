@@ -1,0 +1,10 @@
+tunnel: 2b3558bf-215f-41ed-800c-4a238f2efd63
+credentials-file: C:\Users\Wisnu\Cek Ranmor Indonesia\.cloudflared\2b3558bf-215f-41ed-800c-4a238f2efd63.json
+
+# Fallback ke HTTP/2 karena UDP/QUIC diblokir
+protocol: http2
+
+ingress:
+  - hostname: api-ranmor.fortunamj.com
+    service: http://localhost:8000
+  - service: http_status:404

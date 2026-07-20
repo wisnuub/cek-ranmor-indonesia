@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Search, ChevronDown, MapPin, RefreshCw } from "lucide-react";
+import { Search, ChevronDown, MapPin, RefreshCw, Database } from "lucide-react";
+import Link from "next/link";
 import { checkVehicle, detectRegion } from "@/lib/api";
 import type { CheckResponse, RegionInfo } from "@/types/vehicle";
 import ResultCard from "@/components/ResultCard";
@@ -89,6 +90,15 @@ export default function HomePage() {
         <p className="text-red-100 text-sm mt-2 max-w-xs mx-auto leading-relaxed">
           Cek pajak kendaraan, data STNK & info ranmor dari seluruh Samsat Indonesia
         </p>
+        {/* Nav tabs */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <span className="bg-white text-red-600 text-xs font-semibold px-4 py-1.5 rounded-full">
+            Cek Plat
+          </span>
+          <Link href="/cari" className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition-colors flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5" /> Cari Kendaraan
+          </Link>
+        </div>
       </header>
 
       {/* ── Search Card ── */}

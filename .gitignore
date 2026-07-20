@@ -30,3 +30,14 @@ logs/
 .idea/
 *.swp
 *.swo
+
+# Wrangler cache
+.wrangler/
+
+# Cloudflare Tunnel credentials (JANGAN di-commit!)
+.cloudflared/*.json
+
+# SQLite local DB
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
