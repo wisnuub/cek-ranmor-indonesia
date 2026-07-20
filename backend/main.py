@@ -29,7 +29,23 @@ ADMIN_KEY = os.getenv("ADMIN_KEY", "ranmor-admin-2025")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
-    print("🚗 Cek Ranmor Indonesia API ready")
+    print("Cek Ranmor Indonesia API ready")
+
+    # ── Auto-start crawler ───────────────────────────────────────────
+    # Set env AUTO_CRAWL_REGIONS="jabar,jateng,diy,bali" untuk aktifkan
+    auto_env = os.getenv("AUTO_CRAWL_REGIONS", "")
+    if auto_env.strip():
+        auto_delay  = float(os.getenv("CRAWL_DELAY",      "1.2"))
+        auto_mode   = os.getenv("CRAWL_MODE",             "all")
+        auto_skip   = int(os.getenv("CRAWL_SKIP_AFTER",   "9999"))
+        for region in [r.strip() for r in auto_env.split(",") if r.strip()]:
+            if region not in CRAWLABLE_REGIONS:
+                print(f"  [AUTO-CRAWL] '{region}' bukan region yang bisa di-crawl, skip")
+                continue
+            result = start_crawler(region, delay=auto_delay, mode=auto_mode, skip_after=auto_skip)
+            status = result.get("status", "?")
+            print(f"  [AUTO-CRAWL] {region}: {status} (delay={auto_delay}s, mode={auto_mode})")
+
     yield
 
 app = FastAPI(
@@ -179,24 +195,26 @@ async def _do_check(plate: str, nik: Optional[str], db: AsyncSession):
 
 @app.get("/search")
 async def search(
-    q:        Optional[str] = Query(None, description="Keyword: merk/model/tipe, e.g. 'XSR 155'"),
-    region:   Optional[str] = Query(None, description="Kode region: bali, jakarta, jabar..."),
-    merk:     Optional[str] = Query(None),
-    jenis:    Optional[str] = Query(None, description="Sepeda Motor / Mobil Penumpang / dll"),
-    warna:    Optional[str] = Query(None),
+    q:         Optional[str] = Query(None, description="Keyword: merk/model/tipe, e.g. 'XSR 155'"),
+    region:    Optional[str] = Query(None, description="Kode region: bali, jakarta, jabar..."),
+    merk:      Optional[str] = Query(None),
+    jenis:     Optional[str] = Query(None, description="Sepeda Motor / Mobil Penumpang / dll"),
+    warna:     Optional[str] = Query(None),
+    kabkota:   Optional[str] = Query(None, description="Kabupaten/kota, e.g. 'Kota Bandung'"),
     tahun_min: Optional[int] = Query(None),
     tahun_max: Optional[int] = Query(None),
-    limit:    int = Query(50, le=200),
-    offset:   int = Query(0, ge=0),
+    limit:     int = Query(50, le=200),
+    offset:    int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     """Search vehicles in the accumulated database."""
-    if not any([q, region, merk, jenis, warna, tahun_min, tahun_max]):
+    if not any([q, region, merk, jenis, warna, kabkota, tahun_min, tahun_max]):
         raise HTTPException(400, "Masukkan minimal satu parameter pencarian")
 
     return await search_vehicles(
         db, q=q, region=region, merk=merk, jenis=jenis,
-        warna=warna, tahun_min=tahun_min, tahun_max=tahun_max,
+        warna=warna, kabkota=kabkota,
+        tahun_min=tahun_min, tahun_max=tahun_max,
         limit=limit, offset=offset,
     )
 

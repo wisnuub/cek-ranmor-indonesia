@@ -96,6 +96,7 @@ async def _run(region: str, delay: float, mode: str,
                 found += 1
                 suffix_found += 1
                 consecutive_empty = 0
+                hit.kabkota = kab   # simpan kab/kota dari suffix pattern
                 # Save to DB
                 async with AsyncSessionLocal() as db:
                     await save_vehicle(db, hit)

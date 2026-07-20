@@ -36,8 +36,10 @@ class VehicleInfo:
     alamat: Optional[str] = None
 
     # Meta
-    sumber: Optional[str] = None
-    catatan: Optional[str] = None
+    sumber:   Optional[str] = None
+    catatan:  Optional[str] = None
+    kabkota:  Optional[str] = None   # Kab/kota asal (dari suffix pattern, diisi crawler)
+    no_rangka: Optional[str] = None  # Nomor rangka (dipakai Bali)
     errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:

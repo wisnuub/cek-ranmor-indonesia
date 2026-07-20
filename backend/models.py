@@ -39,14 +39,20 @@ class Vehicle(Base):
     nama_pemilik = Column(String(200))
     alamat       = Column(String(500))
 
+    # Meta
+    kabkota   = Column(String(100))   # Kab/kota dari suffix pattern (diisi crawler)
+    sumber    = Column(String(200))   # URL sumber data Samsat
+    no_rangka = Column(String(50))    # Nomor rangka (opsional, dipakai verifikasi Bali)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
-        Index("ix_vehicles_region",        "region"),
-        Index("ix_vehicles_merk_model",    "merk", "model"),
-        Index("ix_vehicles_tahun",         "tahun"),
-        Index("ix_vehicles_jenis",         "jenis"),
+        Index("ix_vehicles_region",     "region"),
+        Index("ix_vehicles_merk_model", "merk", "model"),
+        Index("ix_vehicles_tahun",      "tahun"),
+        Index("ix_vehicles_jenis",      "jenis"),
+        Index("ix_vehicles_kabkota",    "kabkota"),
     )
 
     def to_dict(self) -> dict:

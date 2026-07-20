@@ -13,11 +13,13 @@ from .base import BaseSamsatAdapter, VehicleInfo
 
 BASE_URL = "https://samsat-pkb2.jakarta.go.id/"
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept":          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
-    "Referer": BASE_URL,
+    "Referer":         BASE_URL,
 }
+# Form fields: nopa = angka (e.g."5651"), noph = huruf suffix (e.g."EP"), flag="2"
+# NIK wajib, dan Samsat Jakarta menggunakan CAPTCHA — tidak bisa otomatisasi tanpa solver
 
 
 class JakartaAdapter(BaseSamsatAdapter):
@@ -46,11 +48,17 @@ class JakartaAdapter(BaseSamsatAdapter):
                 token = token_tag.get("value", "")
 
                 # Step 2: POST query
+                # Form fields: nopa=angka, noph=huruf suffix, flag=2
+                # Contoh: B5651EP → nopa="5651", noph="EP"
+                num_part = re.sub(r"[^0-9]", "", plate_clean[1:])   # strip prefix B, ambil angka
+                suf_part = re.sub(r"[^A-Z]", "", plate_clean)       # semua huruf = suffix termasuk prefix? No:
+                # plate_clean = "B5651EP" → prefix=B, angka=5651, suffix=EP
+                suf_part = re.sub(r"^[A-Z]+\d+", "", plate_clean)   # hapus prefix+angka, sisa = suffix
                 payload = {
-                    "_token": token,
-                    "nopol": plate_clean,
-                    "nik": nik.strip(),
-                    "show_form": "false",
+                    "nopa": num_part,
+                    "noph": suf_part,
+                    "nik":  nik.strip(),
+                    "flag": "2",
                 }
                 resp = await client.post(BASE_URL, data=payload, headers=HEADERS)
                 resp.raise_for_status()

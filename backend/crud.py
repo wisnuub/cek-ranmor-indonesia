@@ -18,27 +18,31 @@ async def save_vehicle(db: AsyncSession, info: VehicleInfo) -> Optional[Vehicle]
     existing = result.scalar_one_or_none()
 
     data = {
-        "plate":            info.plate,
-        "region":           info.region,
-        "region_name":      info.region_name,
-        "merk":             info.merk,
-        "model":            info.model,
-        "tipe":             info.tipe,
-        "tahun":            info.tahun,
-        "warna":            info.warna,
-        "jenis":            info.jenis,
-        "bahan_bakar":      info.bahan_bakar,
-        "cc":               info.cc,
-        "pkb_pokok":        info.pkb_pokok,
-        "pkb_denda":        info.pkb_denda,
-        "swdkllj_pokok":    info.swdkllj_pokok,
-        "swdkllj_denda":    info.swdkllj_denda,
-        "total_tagihan":    info.total_tagihan,
+        "plate":             info.plate,
+        "region":            info.region,
+        "region_name":       info.region_name,
+        "merk":              info.merk,
+        "model":             info.model,
+        "tipe":              info.tipe,
+        "tahun":             info.tahun,
+        "warna":             info.warna,
+        "jenis":             info.jenis,
+        "bahan_bakar":       info.bahan_bakar,
+        "cc":                info.cc,
+        "pkb_pokok":         info.pkb_pokok,
+        "pkb_denda":         info.pkb_denda,
+        "swdkllj_pokok":     info.swdkllj_pokok,
+        "swdkllj_denda":     info.swdkllj_denda,
+        "total_tagihan":     info.total_tagihan,
         "jatuh_tempo_pajak": info.jatuh_tempo_pajak,
         "jatuh_tempo_stnk":  info.jatuh_tempo_stnk,
         "status_pajak":      info.status_pajak,
         "nama_pemilik":      info.nama_pemilik,
         "alamat":            info.alamat,
+        # Meta fields
+        "kabkota":           getattr(info, "kabkota", None),
+        "sumber":            getattr(info, "sumber", None),
+        "no_rangka":         getattr(info, "no_rangka", None),
     }
 
     if existing:
@@ -64,6 +68,7 @@ async def search_vehicles(
     tahun_min: Optional[int] = None,
     tahun_max: Optional[int] = None,
     warna: Optional[str] = None,
+    kabkota: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
@@ -93,6 +98,8 @@ async def search_vehicles(
         filters.append(Vehicle.jenis.ilike(f"%{jenis}%"))
     if warna:
         filters.append(Vehicle.warna.ilike(f"%{warna}%"))
+    if kabkota:
+        filters.append(Vehicle.kabkota.ilike(f"%{kabkota}%"))
     if tahun_min:
         filters.append(Vehicle.tahun >= tahun_min)
     if tahun_max:
