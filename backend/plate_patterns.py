@@ -198,3 +198,8 @@ def get_kabkota_from_suffix(region: str, suffix: str) -> str:
         return "Unknown"
     kabkota = KABKOTA_MAP.get(region, {})
     return kabkota.get(suffix[0].upper(), "Unknown")
+
+
+# ── Backwards-compat aliases (dipakai di main.py) ─────────────────────────────
+KNOWN_SUFFIXES      = KABKOTA_MAP   # {region: {first_letter: kab/kota}}
+REGION_PRIMARY_PREFIX = REGION_PREFIX  # {region: prefix}

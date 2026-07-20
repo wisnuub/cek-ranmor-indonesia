@@ -218,9 +218,10 @@ async def list_regions():
 
 @app.post("/admin/crawler/start")
 async def crawler_start(
-    region: str   = Query(..., description="Region: bali, jabar, jateng, diy"),
-    delay:  float = Query(1.5, description="Detik antar request (jangan terlalu cepat)"),
-    mode:   str   = Query("all", description="all | motor | mobil"),
+    region:     str   = Query(..., description="Region: bali, jabar, jateng, diy"),
+    delay:      float = Query(1.5, description="Detik antar request (jangan terlalu cepat)"),
+    mode:       str   = Query("all", description="all | motor | mobil"),
+    skip_after: int   = Query(9999, description="Skip suffix setelah N angka kosong berturut-turut (default 9999 = scan penuh)"),
     _: None = Depends(require_admin),
 ):
     """
@@ -228,7 +229,7 @@ async def crawler_start(
     Phase 1: coba known suffixes dulu (cepat).
     Phase 2: brute-force sisa kombinasi.
     """
-    return start_crawler(region, delay=delay, mode=mode)
+    return start_crawler(region, delay=delay, mode=mode, skip_after=skip_after)
 
 
 @app.post("/admin/crawler/stop")
