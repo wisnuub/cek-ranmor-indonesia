@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: cek-ranmor-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: singapore
+    envVars:
+      - key: PORT
+        value: 8000
+    healthCheckPath: /health

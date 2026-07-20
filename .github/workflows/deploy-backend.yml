@@ -1,23 +1,16 @@
-name: Deploy Backend → Railway
+name: Deploy Backend → Render
 
 on:
   push:
-    branches: [main]
-    paths: ["backend/**"]
+    branches: [master]
+    paths: ["backend/**", "render.yaml"]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy FastAPI to Railway
+    name: Trigger Render deploy
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
-        run: railway up --service cek-ranmor-api
-        working-directory: backend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Trigger Render deploy hook
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
