@@ -1,144 +1,200 @@
 """
-Known plate suffix patterns per region.
-Data ini dikumpulkan dari observasi & komunitas — belum lengkap.
-Crawler akan prioritaskan suffix yang ada di sini, lalu brute-force sisanya.
+Indonesian plate number patterns — data dari artikel resmi & komunitas otomotif.
 
-Format suffix: string 1-3 huruf, tanpa I dan O.
-Nomor motor vs mobil berdasarkan range (estimasi, bisa dikonfigurasi).
+Struktur plat: PREFIX + ANGKA + SUFFIX
+  - PREFIX  : kode provinsi (B, D, DK, dll.)
+  - ANGKA   : range menentukan jenis kendaraan
+  - SUFFIX  : 1-3 huruf, huruf pertama = kab/kota, sisanya = seri urut
+
+Sumber:
+  - Peraturan Kepolisian No. 7 Tahun 2021
+  - IDN Times Bali, Daihatsu.co.id, Auto2000, Kompas.com
 """
 
-# ---------------------------------------------------------------------------
-# Estimasi range nomor per jenis kendaraan
-# Beda tiap provinsi tapi ini starting point yang cukup akurat
-# ---------------------------------------------------------------------------
-NUMBER_RANGES = {
-    "mobil":  [(1, 1999), (2000, 3999)],
-    "motor":  [(4000, 6999)],
-    "khusus": [(7000, 9999)],
-    "all":    [(1, 9999)],
+# ────────────────────────────────────────────────────────────────────────────
+# RANGE ANGKA → JENIS KENDARAAN
+# ────────────────────────────────────────────────────────────────────────────
+
+# Umum (luar Polda Metro Jaya)
+NUMBER_RANGES_GENERAL = {
+    "mobil":  (1,    1_999),
+    "motor":  (2_000, 6_999),
+    "bus":    (7_000, 7_999),
+    "barang": (8_000, 8_999),
+    "khusus": (9_000, 9_999),
+    "all":    (1,    9_999),
 }
 
-# ---------------------------------------------------------------------------
-# Known suffix patterns per region
-# True  = diketahui valid (prioritas pertama)
-# False = tidak dipakai / reserved
-# None  = unknown (brute force)
-# ---------------------------------------------------------------------------
-
-KNOWN_SUFFIXES: dict[str, list[str]] = {
-
-    # ── BALI (DK) ──────────────────────────────────────────────────────────
-    # Sumber: observasi komunitas, forum motor Bali
-    "bali": [
-        # Denpasar Selatan / Utara / Timur / Barat
-        "A", "B", "C", "D", "E", "F", "G", "H", "J", "K",
-        "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V",
-        "W", "X", "Y", "Z",
-        # Seri 2 huruf — Denpasar
-        "AA", "AB", "AC", "AD", "AE", "AF", "AG", "AH", "AJ", "AK",
-        "AL", "AM", "AN", "AP", "AQ", "AR", "AS", "AT", "AU", "AV",
-        "AW", "AX", "AY", "AZ",
-        # Badung (Kuta, Seminyak, Canggu, Nusa Dua)
-        "BA", "BB", "BC", "BD", "BE", "BF", "BG", "BH", "BJ", "BK",
-        "BL", "BM", "BN", "BP", "BQ", "BR", "BS", "BT", "BU", "BV",
-        "BW", "BX", "BY", "BZ",
-        # Gianyar (Ubud, Gianyar Kota)
-        "CA", "CB", "CC", "CD", "CE", "CF", "CG", "CH", "CJ", "CK",
-        # Tabanan
-        "DA", "DB", "DC", "DD", "DE", "DF",
-        # Buleleng (Singaraja)
-        "EA", "EB", "EC", "ED", "EE", "EF", "EG",
-        # Klungkung, Bangli, Karangasem
-        "FA", "FB", "FC", "FD", "FE", "FF", "FG", "FH",
-        "GA", "GB", "GC", "GD",
-        "HA", "HB", "HC",
-        # Seri 3 huruf (user mention: FCR, ADQ, KK)
-        "FCR", "ADQ", "KK",
-        # Seri 3 huruf Denpasar lanjutan
-        "AAA", "AAB", "AAC", "AAD", "AAE", "AAF", "AAG", "AAH",
-        "ABA", "ABB", "ABC", "ABD",
-        "ACA", "ACB", "ACC",
-        # Badung 3 huruf
-        "BAA", "BAB", "BAC", "BAD", "BAE",
-        "BBA", "BBB", "BBC",
-        "BCA", "BCB",
-        # Gianyar 3 huruf
-        "CAA", "CAB", "CAC", "CAD",
-        # Buleleng 3 huruf
-        "EAA", "EAB",
-    ],
-
-    # ── JAWA BARAT (D, F, Z, E, T) ─────────────────────────────────────────
-    "jabar": [
-        # Bandung Kota
-        "A", "B", "C", "D", "E", "F", "G", "H", "J", "K",
-        "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-        # 2 huruf
-        "AA", "AB", "AC", "AD", "AE", "AF", "AG", "AH", "AJ", "AK",
-        "AL", "AM", "AN", "AP", "AQ", "AR", "AS", "AT", "AU", "AV",
-        "AW", "AX", "AY", "AZ",
-        "BA", "BB", "BC", "BD", "BE", "BF", "BG", "BH", "BJ", "BK",
-        "BL", "BM", "BN", "BP", "BQ", "BR", "BS", "BT", "BU", "BV",
-        "CA", "CB", "CC", "CD", "CE", "CF",
-        "DA", "DB", "DC", "DD",
-        "EA", "EB", "EC",
-        # 3 huruf populer Jabar
-        "AAA", "AAB", "AAC", "AAD", "AAE", "AAF",
-        "ABA", "ABB", "ABC",
-        "BAA", "BAB", "BAC",
-    ],
-
-    # ── JAWA TENGAH (H, G, K, R, AA, AD) ───────────────────────────────────
-    "jateng": [
-        "A","B","C","D","E","F","G","H","J","K","L","M","N","P","Q","R","S","T","U","V","W","X","Y","Z",
-        "AA","AB","AC","AD","AE","AF","AG","AH","AJ","AK",
-        "AL","AM","AN","AP","AQ","AR","AS","AT","AU","AV","AW",
-        "BA","BB","BC","BD","BE","BF","BG","BH","BJ","BK",
-        "CA","CB","CC","CD",
-        "DA","DB","DC",
-        "EA","EB",
-        "AAA","AAB","AAC","AAD",
-        "ABA","ABB","ABC",
-        "BAA","BAB",
-    ],
-
-    # ── DI YOGYAKARTA (AB) ──────────────────────────────────────────────────
-    "diy": [
-        "A","B","C","D","E","F","G","H","J","K","L","M","N","P","Q","R","S","T","U","V","W","X","Y","Z",
-        "AA","AB","AC","AD","AE","AF","AG","AH","AJ","AK",
-        "AL","AM","AN","AP","AQ","AR","AS","AT","AU",
-        "BA","BB","BC","BD","BE","BF","BG","BH","BJ",
-        "CA","CB","CC","CD",
-        "DA","DB",
-        "AAA","AAB","AAC",
-        "ABA","ABB",
-    ],
+# Khusus Polda Metro Jaya (plat B — Jakarta, Depok, Tangerang, Bekasi)
+NUMBER_RANGES_B = {
+    "mobil":  (1,    2_999),
+    "motor":  (3_000, 6_999),
+    "bus":    (7_000, 7_999),
+    "barang": (8_000, 8_999),
+    "khusus": (9_000, 9_999),
+    "all":    (1,    9_999),
 }
 
-# Urutan pencarian: known suffixes dulu, lalu brute force sisa
-def get_search_order(region: str) -> tuple[list[str], bool]:
+def get_number_range(region: str, mode: str = "all") -> tuple[int, int]:
+    """Ambil range angka berdasarkan region dan mode kendaraan."""
+    ranges = NUMBER_RANGES_B if region == "jakarta" else NUMBER_RANGES_GENERAL
+    return ranges.get(mode, ranges["all"])
+
+def guess_jenis(region: str, number: int) -> str:
+    """Estimasi jenis kendaraan dari angka plat."""
+    ranges = NUMBER_RANGES_B if region == "jakarta" else NUMBER_RANGES_GENERAL
+    if ranges["mobil"][0]  <= number <= ranges["mobil"][1]:  return "Mobil Penumpang"
+    if ranges["motor"][0]  <= number <= ranges["motor"][1]:  return "Sepeda Motor"
+    if ranges["bus"][0]    <= number <= ranges["bus"][1]:    return "Bus"
+    if ranges["barang"][0] <= number <= ranges["barang"][1]: return "Kendaraan Barang"
+    return "Kendaraan Khusus"
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# SUFFIX — HURUF PERTAMA PER KABUPATEN/KOTA
+# Huruf pertama suffix = kode kab/kota
+# Huruf selanjutnya   = seri urut (A-Z, AA-ZZ, AAA-ZZZ)
+# ────────────────────────────────────────────────────────────────────────────
+
+# Bali (DK)
+# Sumber: IDN Times Bali, Traveloka, Daihatsu.co.id
+BALI_KABKOTA: dict[str, str] = {
+    "A": "Kota Denpasar",    "B": "Kota Denpasar",
+    "C": "Kota Denpasar",    "D": "Kota Denpasar",
+    "E": "Kota Denpasar",    "I": "Kota Denpasar",
+    "Q": "Kota Denpasar",    "X": "Kota Denpasar",
+    "F": "Kab. Badung",      "J": "Kab. Badung",      "O": "Kab. Badung",
+    "W": "Kab. Jembrana",    "Z": "Kab. Jembrana",
+    "K": "Kab. Gianyar",     "L": "Kab. Gianyar",
+    "G": "Kab. Tabanan",     "H": "Kab. Tabanan",
+    "U": "Kab. Buleleng",    "V": "Kab. Buleleng",
+    "S": "Kab. Karangasem",  "T": "Kab. Karangasem",
+    "M": "Kab. Klungkung",   "N": "Kab. Klungkung",
+    "P": "Kab. Bangli",      "R": "Kab. Bangli",
+    "Y": "Kota Denpasar",    # seri lanjutan
+}
+
+# Jakarta (B) — huruf pertama suffix = kota/kab
+# Sumber: Daihatsu.co.id, Auto2000, Auksi.co.id
+JAKARTA_KABKOTA: dict[str, str] = {
+    "U": "Jakarta Utara",
+    "B": "Jakarta Barat",
+    "P": "Jakarta Pusat",
+    "S": "Jakarta Selatan",
+    "T": "Jakarta Timur",
+    "E": "Kota Depok",          "Z": "Kota Depok",
+    "C": "Kota Tangerang",      "V": "Kota Tangerang",
+    "N": "Kab. Tangerang",      "G": "Kab. Tangerang",
+    "K": "Kota Bekasi",
+    "F": "Kab. Bekasi",
+    "W": "Kota Tangerang Selatan",
+}
+
+# Jawa Barat (D — Bandung & sekitarnya)
+# Sumber: Daihatsu.co.id, Kumparan
+JABAR_D_KABKOTA: dict[str, str] = {
+    # Kota Bandung (paling banyak)
+    "A": "Kota Bandung", "B": "Kota Bandung", "C": "Kota Bandung",
+    "D": "Kota Bandung", "E": "Kota Bandung", "F": "Kota Bandung",
+    "G": "Kota Bandung", "H": "Kota Bandung", "I": "Kota Bandung",
+    "J": "Kota Bandung", "K": "Kota Bandung", "L": "Kota Bandung",
+    "M": "Kota Bandung", "N": "Kota Bandung", "O": "Kota Bandung",
+    "P": "Kota Bandung", "R": "Kota Bandung",
+    # Kota Cimahi
+    "S": "Kota Cimahi",  "T": "Kota Cimahi",
+    # Kab. Bandung Barat
+    "U": "Kab. Bandung Barat", "W": "Kab. Bandung Barat", "X": "Kab. Bandung Barat",
+    # Kab. Bandung
+    "V": "Kab. Bandung", "Y": "Kab. Bandung", "Z": "Kab. Bandung",
+}
+
+# Gabungan semua kabkota per region
+KABKOTA_MAP: dict[str, dict[str, str]] = {
+    "bali":    BALI_KABKOTA,
+    "jakarta": JAKARTA_KABKOTA,
+    "jabar":   JABAR_D_KABKOTA,
+    # Jateng, DIY, dll — first letters belum terdokumentasi lengkap, pakai semua A-Z
+}
+
+# Prefix utama per region
+REGION_PREFIX: dict[str, str] = {
+    "bali":    "DK",
+    "jabar":   "D",
+    "jateng":  "H",
+    "diy":     "AB",
+    "jakarta": "B",
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# SMART SUFFIX GENERATOR
+# Urutan: known first-letters + seri A-Z → 2-letter → 3-letter
+# ────────────────────────────────────────────────────────────────────────────
+
+import itertools
+import string
+
+# Huruf yang dipakai (tanpa I dan O — bisa dikecualikan tapi Bali pakai I)
+ALL_LETTERS = list(string.ascii_uppercase)
+SAFE_LETTERS = [c for c in ALL_LETTERS if c not in ("O",)]  # Bali pakai I, jadi hanya skip O
+
+
+def generate_smart_suffixes(region: str) -> list[str]:
     """
-    Returns (known_suffixes, should_bruteforce_remaining).
+    Generate suffix dalam urutan yang paling efisien:
+    1. Known single-letter first codes (per kab/kota)
+    2. Two-letter: [first_letter][A-Z]
+    3. Three-letter: [first_letter][A-Z][A-Z]
+    4. Brute-force sisa (huruf yang tidak ada di map)
     """
-    known = KNOWN_SUFFIXES.get(region, [])
-    return known, True  # selalu brute-force sisanya juga
+    kabkota = KABKOTA_MAP.get(region, {})
+    known_firsts = list(kabkota.keys())  # e.g. Bali: A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z
+    unknown_firsts = [c for c in ALL_LETTERS if c not in known_firsts]
 
-# Prefix utama per region untuk crawler
-REGION_PRIMARY_PREFIX: dict[str, str] = {
-    "bali":   "DK",
-    "jabar":  "D",
-    "jateng": "H",
-    "diy":    "AB",
-}
+    result = []
+    seen = set()
 
-# Estimasi jenis kendaraan dari nomor plat
-def guess_jenis_from_number(number: int) -> str | None:
-    if 1 <= number <= 1999:
-        return "Mobil"
-    if 2000 <= number <= 3999:
-        return "Mobil / Niaga"
-    if 4000 <= number <= 6999:
-        return "Sepeda Motor"
-    if 7000 <= number <= 9999:
-        return "Khusus / Dinas"
-    return None
+    def add(s: str):
+        if s not in seen:
+            seen.add(s)
+            result.append(s)
+
+    # 1. Single letter (semua known first letters)
+    for fl in known_firsts:
+        add(fl)
+
+    # 2. Two-letter: known_first + A-Z
+    for fl in known_firsts:
+        for sl in ALL_LETTERS:
+            add(fl + sl)
+
+    # 3. Three-letter: known_first + A-Z + A-Z
+    for fl in known_firsts:
+        for sl in ALL_LETTERS:
+            for tl in ALL_LETTERS:
+                add(fl + sl + tl)
+
+    # 4. Brute-force: unknown first letters (single)
+    for fl in unknown_firsts:
+        add(fl)
+
+    # 5. Brute-force: unknown first letters (2-letter)
+    for fl in unknown_firsts:
+        for sl in ALL_LETTERS:
+            add(fl + sl)
+
+    # 6. Brute-force: unknown first letters (3-letter)
+    for fl in unknown_firsts:
+        for sl in ALL_LETTERS:
+            for tl in ALL_LETTERS:
+                add(fl + sl + tl)
+
+    return result
+
+
+def get_kabkota_from_suffix(region: str, suffix: str) -> str:
+    """Identifikasi kab/kota dari suffix pertama."""
+    if not suffix:
+        return "Unknown"
+    kabkota = KABKOTA_MAP.get(region, {})
+    return kabkota.get(suffix[0].upper(), "Unknown")

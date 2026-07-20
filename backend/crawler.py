@@ -1,14 +1,9 @@
 """
-Smart background plate enumerator.
-Strategi:
-  1. Coba known suffixes dulu (dari plate_patterns.py) — jauh lebih cepat
-  2. Lalu brute-force sisa kombinasi yang belum dicoba
-  3. Rate-limited, resumable, per-region
+Smart background plate crawler.
+Menggunakan data suffix per kab/kota dari plate_patterns.py.
 """
 import asyncio
-import itertools
 import logging
-import string
 from datetime import datetime
 from typing import Optional
 
@@ -16,163 +11,108 @@ from database import AsyncSessionLocal
 from crud import save_vehicle, get_or_create_crawler_job, update_crawler_job
 from adapters import ADAPTERS
 from plate_patterns import (
-    KNOWN_SUFFIXES, REGION_PRIMARY_PREFIX,
-    get_search_order, guess_jenis_from_number,
-    NUMBER_RANGES,
+    generate_smart_suffixes, get_number_range,
+    guess_jenis, get_kabkota_from_suffix, REGION_PREFIX,
 )
 
 log = logging.getLogger("crawler")
 
-# Regions yang bisa di-crawl (tidak butuh NIK)
-CRAWLABLE_REGIONS = {"jabar", "jateng", "diy", "bali"}
+CRAWLABLE_REGIONS = {"jabar", "jateng", "diy", "bali"}  # No NIK needed
 
-# Letters untuk brute-force (tanpa I, O)
-LETTERS = [c for c in string.ascii_uppercase if c not in ("I", "O")]
-
-# Active tasks
 _tasks:      dict[str, asyncio.Task] = {}
 _stop_flags: dict[str, bool]         = {}
 _progress:   dict[str, dict]         = {}
 
 
-def _gen_suffixes_bruteforce(skip_known: list[str]):
-    """Generate semua kombinasi suffix yang BELUM ada di known list."""
-    known_set = set(skip_known)
-    for length in (1, 2, 3):
-        for combo in itertools.product(LETTERS, repeat=length):
-            s = "".join(combo)
-            if s not in known_set:
-                yield s
-
-
-def _gen_plates(prefix: str, suffixes: list[str], number_range: tuple[int, int]):
-    """Yield plate strings: prefix + number + suffix, untuk range angka tertentu."""
-    lo, hi = number_range
-    for suffix in suffixes:
-        for num in range(lo, hi + 1):
-            yield f"{prefix}{num}{suffix}", suffix, num
-
-
 async def _run(region: str, delay: float, mode: str):
-    """
-    Core crawler loop.
-    mode: "all" | "motor" | "mobil"
-    """
     adapter = ADAPTERS.get(region)
-    prefix  = REGION_PRIMARY_PREFIX.get(region)
+    prefix  = REGION_PREFIX.get(region)
     if not adapter or not prefix:
-        log.error(f"[{region}] No adapter/prefix")
-        return
+        log.error(f"[{region}] No adapter/prefix"); return
 
-    known_suffixes, do_bruteforce = get_search_order(region)
-
-    # Pilih range angka berdasarkan mode
-    if mode == "motor":
-        ranges = NUMBER_RANGES["motor"]
-    elif mode == "mobil":
-        ranges = NUMBER_RANGES["mobil"]
-    else:
-        ranges = NUMBER_RANGES["all"]
+    num_lo, num_hi = get_number_range(region, mode)
+    suffixes = generate_smart_suffixes(region)
 
     async with AsyncSessionLocal() as db:
         job = await get_or_create_crawler_job(db, region)
+        # Resume: skip suffixes & numbers already tried
         resume_suffix = None
-        resume_num    = None
+        resume_num    = 0
         if job.last_plate:
-            # Parse last plate untuk resume: e.g. "DK5234FCR"
-            p = job.last_plate.replace(prefix, "", 1)
-            digits = ""
-            letters_part = ""
-            for i, ch in enumerate(p):
-                if ch.isdigit():
-                    digits += ch
-                else:
-                    letters_part = p[i:]
-                    break
-            resume_suffix = letters_part or None
-            resume_num    = int(digits) if digits else None
-
+            lp = job.last_plate.removeprefix(prefix)
+            num_str = "".join(c for c in lp if c.isdigit())
+            suf_str = "".join(c for c in lp if c.isalpha())
+            resume_suffix = suf_str or None
+            resume_num    = int(num_str) if num_str else 0
         await update_crawler_job(db, region, status="running", started_at=datetime.utcnow())
 
-    tried = 0
-    found = 0
+    log.info(f"[{region}] START prefix={prefix} mode={mode} "
+             f"numbers={num_lo}-{num_hi} suffixes={len(suffixes):,}")
+
+    tried = 0; found = 0
     _progress[region] = {"tried": 0, "found": 0, "last": "", "status": "running"}
 
-    # Phase 1: known suffixes
-    phase1_done = (resume_suffix is not None and resume_suffix not in known_suffixes)
-    if not phase1_done:
-        log.info(f"[{region}] Phase 1: {len(known_suffixes)} known suffixes")
-        for num_range in ranges:
-            for plate, suffix, num in _gen_plates(prefix, known_suffixes, num_range):
-                # Resume check
-                if resume_suffix and suffix == resume_suffix and resume_num and num <= resume_num:
-                    continue
+    past_resume = (resume_suffix is None)
 
-                if _stop_flags.get(region):
-                    await _save_progress(region, plate, tried, found, "paused")
-                    return
+    for suffix in suffixes:
+        if not past_resume:
+            if suffix == resume_suffix:
+                past_resume = True
+            else:
+                continue
 
-                found_inc = await _try_plate(adapter, plate, region)
-                tried += 1
-                found += found_inc
+        kab = get_kabkota_from_suffix(region, suffix)
 
-                _progress[region] = {"tried": tried, "found": found, "last": plate, "status": "running"}
+        for num in range(num_lo, num_hi + 1):
+            # Skip numbers already tried on resume suffix
+            if not past_resume or (suffix == resume_suffix and num <= resume_num):
+                continue
 
-                if tried % 200 == 0:
-                    await _save_progress(region, plate, tried, found, "running")
-                    log.info(f"[{region}] Phase1 tried={tried} found={found} last={plate}")
-
-                await asyncio.sleep(delay)
-
-    # Phase 2: brute-force remaining
-    if do_bruteforce:
-        log.info(f"[{region}] Phase 2: brute-force remaining suffixes")
-        for suffix in _gen_suffixes_bruteforce(known_suffixes):
             if _stop_flags.get(region):
-                break
-            for num_range in ranges:
-                for plate, _, num in _gen_plates(prefix, [suffix], num_range):
-                    if _stop_flags.get(region):
-                        await _save_progress(region, plate, tried, found, "paused")
-                        return
+                plate = f"{prefix}{num}{suffix}"
+                await _checkpoint(region, plate, tried, found, "paused")
+                log.info(f"[{region}] Paused at {plate}")
+                return
 
-                    found_inc = await _try_plate(adapter, plate, region)
-                    tried += 1
-                    found += found_inc
+            plate = f"{prefix}{num}{suffix}"
+            inc   = await _try(adapter, plate, region, kab)
+            tried += 1; found += inc
 
-                    _progress[region] = {"tried": tried, "found": found, "last": plate, "status": "running"}
+            if tried % 500 == 0:
+                await _checkpoint(region, plate, tried, found, "running")
+                pct = (tried / (len(suffixes) * (num_hi - num_lo + 1))) * 100
+                log.info(f"[{region}] tried={tried:,} found={found} last={plate} ({pct:.2f}%)")
 
-                    if tried % 500 == 0:
-                        await _save_progress(region, plate, tried, found, "running")
-                        log.info(f"[{region}] Phase2 tried={tried} found={found} last={plate}")
+            _progress[region] = {"tried": tried, "found": found,
+                                  "last": plate, "kab": kab, "status": "running"}
+            await asyncio.sleep(delay)
 
-                    await asyncio.sleep(delay)
-
-    await _save_progress(region, "", tried, found, "done")
-    log.info(f"[{region}] DONE tried={tried} found={found}")
+    await _checkpoint(region, "", tried, found, "done")
+    log.info(f"[{region}] DONE tried={tried:,} found={found}")
 
 
-async def _try_plate(adapter, plate: str, region: str) -> int:
-    """Try one plate. Returns 1 if found, 0 if not."""
+async def _try(adapter, plate: str, region: str, kab: str) -> int:
     try:
         info = await adapter.fetch(plate)
         if info.merk or info.model:
+            # Inject kabkota info if adapter didn't fill it
+            if not info.region_name:
+                info.region_name = kab
             async with AsyncSessionLocal() as db:
                 await save_vehicle(db, info)
-            log.info(f"  FOUND {plate} → {info.merk} {info.model} {info.tahun}")
+            log.info(f"  ✓ {plate} → {info.merk} {info.model} ({kab})")
             return 1
     except asyncio.CancelledError:
         raise
     except Exception as e:
-        log.debug(f"  ERR {plate}: {e}")
+        log.debug(f"  ✗ {plate}: {e}")
     return 0
 
 
-async def _save_progress(region, plate, tried, found, status):
+async def _checkpoint(region, plate, tried, found, status):
     async with AsyncSessionLocal() as db:
-        await update_crawler_job(db, region,
-            last_plate=plate, total_tried=tried,
-            total_found=found, status=status)
+        await update_crawler_job(db, region, last_plate=plate,
+                                 total_tried=tried, total_found=found, status=status)
     _progress[region] = {"tried": tried, "found": found, "last": plate, "status": status}
 
 
@@ -180,26 +120,25 @@ async def _save_progress(region, plate, tried, found, status):
 
 def start_crawler(region: str, delay: float = 1.5, mode: str = "all") -> dict:
     if region not in CRAWLABLE_REGIONS:
-        return {"error": f"Region '{region}' tidak bisa di-crawl (butuh NIK atau belum didukung)"}
+        return {"error": f"Region '{region}' butuh NIK atau belum didukung. Crawlable: {list(CRAWLABLE_REGIONS)}"}
     if region not in ADAPTERS:
-        return {"error": f"Tidak ada adapter untuk region '{region}'"}
+        return {"error": f"Tidak ada adapter untuk '{region}'"}
     if region in _tasks and not _tasks[region].done():
-        return {"status": "already_running", "region": region, **_progress.get(region, {})}
+        return {"status": "already_running", **_progress.get(region, {})}
 
     _stop_flags[region] = False
-    task = asyncio.create_task(_run(region, delay, mode))
-    _tasks[region] = task
+    _tasks[region] = asyncio.create_task(_run(region, delay, mode))
 
-    prefix = REGION_PRIMARY_PREFIX.get(region, "?")
-    known  = len(KNOWN_SUFFIXES.get(region, []))
+    prefix = REGION_PREFIX.get(region, "?")
+    lo, hi = get_number_range(region, mode)
     return {
         "status":  "started",
         "region":  region,
         "prefix":  prefix,
         "mode":    mode,
         "delay_s": delay,
-        "known_suffixes": known,
-        "strategy": f"Phase 1: {known} known suffixes → Phase 2: brute-force sisanya",
+        "number_range": f"{lo}–{hi}",
+        "note": "Phase 1: known suffixes per kab/kota → Phase 2: brute-force",
     }
 
 
@@ -220,11 +159,14 @@ def crawler_status() -> dict:
 
 
 def add_known_suffix(region: str, suffix: str) -> dict:
-    """Tambahkan suffix ke known list secara runtime (tanpa restart)."""
-    suffix = suffix.upper().replace("I", "").replace("O", "")
-    if region not in KNOWN_SUFFIXES:
-        KNOWN_SUFFIXES[region] = []
-    if suffix not in KNOWN_SUFFIXES[region]:
-        KNOWN_SUFFIXES[region].append(suffix)
-        return {"added": suffix, "total_known": len(KNOWN_SUFFIXES[region])}
-    return {"already_exists": suffix}
+    """Tambah suffix yang diketahui valid secara runtime."""
+    from plate_patterns import KABKOTA_MAP
+    suffix = suffix.upper()
+    if not suffix:
+        return {"error": "Suffix kosong"}
+    fl = suffix[0]
+    if region not in KABKOTA_MAP:
+        KABKOTA_MAP[region] = {}
+    if fl not in KABKOTA_MAP[region]:
+        KABKOTA_MAP[region][fl] = f"Unknown ({suffix})"
+    return {"added": suffix, "first_letter": fl, "region": region}
