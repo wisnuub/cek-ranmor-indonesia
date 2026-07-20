@@ -6,6 +6,7 @@ import { searchVehicles, getStats, REGIONS, JENIS_LIST } from "@/lib/api";
 import type { SearchResult, DbStats } from "@/types/vehicle";
 import VehicleList from "@/components/VehicleList";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function SearchPage() {
   const [q,        setQ]        = useState("");
@@ -67,7 +68,7 @@ export default function SearchPage() {
   const currentPage = Math.floor(offset / LIMIT) + 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-600 via-red-600 to-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-red-600 via-red-600 to-gray-50 dark:to-gray-950">
 
       {/* Header */}
       <header className="px-4 pt-10 pb-6">
@@ -76,7 +77,8 @@ export default function SearchPage() {
             ← Cek Plat
           </Link>
           <span className="text-white/40">|</span>
-          <h1 className="text-white font-bold text-lg">Cari Kendaraan</h1>
+          <h1 className="text-white font-bold text-lg flex-1">Cari Kendaraan</h1>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -121,7 +123,7 @@ export default function SearchPage() {
             <button
               type="button"
               onClick={() => setShowFilter(!showFilter)}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
               Filter lanjutan
@@ -131,10 +133,10 @@ export default function SearchPage() {
             </button>
 
             {showFilter && (
-              <div className="space-y-2.5 bg-gray-50 rounded-xl p-3 border border-gray-100">
+              <div className="space-y-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
                 {/* Region */}
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Daerah</label>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Daerah</label>
                   <select
                     className="input-field text-sm py-2"
                     value={region}
@@ -149,7 +151,7 @@ export default function SearchPage() {
 
                 {/* Jenis */}
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Jenis Kendaraan</label>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Jenis Kendaraan</label>
                   <select
                     className="input-field text-sm py-2"
                     value={jenis}
@@ -164,7 +166,7 @@ export default function SearchPage() {
 
                 {/* Tahun range */}
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Tahun</label>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Tahun</label>
                   <div className="flex gap-2">
                     <input
                       type="number"
@@ -226,7 +228,7 @@ export default function SearchPage() {
                     if (ex.region) setShowFilter(true);
                     setTimeout(() => doSearch(0), 100);
                   }}
-                  className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1.5 hover:border-red-300 hover:text-red-600 transition-colors shadow-sm"
+                  className="text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-full px-3 py-1.5 hover:border-red-300 dark:hover:border-red-600 hover:text-red-600 dark:hover:text-red-400 transition-colors shadow-sm"
                 >
                   {ex.label}
                 </button>

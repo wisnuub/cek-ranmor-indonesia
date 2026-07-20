@@ -6,36 +6,25 @@ const API_URL =
     ? "http://localhost:8000"
     : "https://api-ranmor.fortunamj.com");
 
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || "ranmor-admin-2025";
-
-async function adminFetch<T>(path: string, method = "GET"): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: { Accept: "application/json", "x-admin-key": ADMIN_KEY },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function getCrawlerStatus() {
-  return adminFetch<CrawlerStatus>("/admin/crawler/status");
+export interface CrawlerRegionStatus {
+  running: boolean;
+  tried: number;
+  found: number;
+  last: string;
+  current_suffix: string;
+  kab?: string;
+  suffix_found: number;
+  consecutive_empty: number;
+  status: string;
 }
 
 export interface CrawlerStatus {
-  active: Record<string, {
-    running: boolean;
-    tried: number;
-    found: number;
-    last: string;
-    current_suffix: string;
-    kab?: string;
-    suffix_found: number;
-    consecutive_empty: number;
-    status: string;
-  }>;
-  crawlable_regions: string[];
-  known_suffixes: Record<string, number>;
-  prefixes: Record<string, string>;
+  crawlers: Record<string, CrawlerRegionStatus>;
+  db: DbStats;
+}
+
+export async function getCrawlerStatus(): Promise<CrawlerStatus> {
+  return apiFetch<CrawlerStatus>("/crawler/status");
 }
 
 async function apiFetch<T>(path: string): Promise<T> {

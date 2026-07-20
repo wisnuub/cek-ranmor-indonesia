@@ -7,6 +7,7 @@ import { checkVehicle, detectRegion } from "@/lib/api";
 import type { CheckResponse, RegionInfo } from "@/types/vehicle";
 import ResultCard from "@/components/ResultCard";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
+import { ThemeToggle as ThemeToggleInline } from "@/components/ThemeToggle";
 
 // Supported regions badge list
 const SUPPORTED = [
@@ -76,7 +77,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-600 via-red-600 to-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-red-600 via-red-600 to-gray-50 dark:to-gray-950">
 
       {/* ── Hero Header ── */}
       <header className="px-4 pt-12 pb-8 text-center">
@@ -101,6 +102,7 @@ export default function HomePage() {
           <Link href="/status" className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition-colors flex items-center gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> Status Crawler
           </Link>
+          <ThemeToggleInline />
         </div>
       </header>
 

@@ -231,6 +231,22 @@ async def list_regions():
 
 
 # ──────────────────────────────────────────────
+# Public crawler status (read-only, no auth)
+# ──────────────────────────────────────────────
+
+@app.get("/crawler/status")
+async def public_crawler_status(db: AsyncSession = Depends(get_db)):
+    """Status crawler publik — tidak butuh admin key."""
+    from crud import get_db_stats
+    status = crawler_status()
+    stats  = await get_db_stats(db)
+    return {
+        "crawlers": status,
+        "db": stats,
+    }
+
+
+# ──────────────────────────────────────────────
 # Admin — Crawler management
 # ──────────────────────────────────────────────
 

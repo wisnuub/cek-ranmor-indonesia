@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ThemeScript } from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "Cek Ranmor Indonesia — Cek Pajak Kendaraan Seluruh Indonesia",
@@ -37,7 +38,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body>{children}</body>
     </html>
   );
