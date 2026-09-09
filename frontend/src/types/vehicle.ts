@@ -29,6 +29,8 @@ export interface VehicleData {
   status_pajak?: string;
   nama_pemilik?: string;
   alamat?: string;
+  kabkota?: string;
+  no_rangka?: string;
   sumber?: string;
   catatan?: string;
   errors: string[];

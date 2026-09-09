@@ -24,13 +24,13 @@ export default function ResultCard({ result }: Props) {
             <ShieldAlert className="w-5 h-5 text-yellow-600" />
           </div>
           <div>
-            <p className="font-semibold text-gray-800">NIK Diperlukan</p>
+            <p className="font-semibold text-gray-800 dark:text-gray-100">NIK Diperlukan</p>
             <p className="text-sm text-gray-500 mt-0.5">
               {region.name} mengharuskan NIK pemilik kendaraan untuk keamanan data.
             </p>
           </div>
         </div>
-        <p className="text-sm text-gray-600 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+        <p className="text-sm text-gray-600 dark:text-gray-300 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-3">
           Silakan masukkan NIK (16 digit) di kolom opsional di atas, lalu cari lagi.
         </p>
       </div>
@@ -46,13 +46,13 @@ export default function ResultCard({ result }: Props) {
             <Info className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <p className="font-semibold text-gray-800">Belum Didukung</p>
+            <p className="font-semibold text-gray-800 dark:text-gray-100">Belum Didukung</p>
             <p className="text-sm text-gray-500 mt-0.5">{message}</p>
           </div>
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-          <p className="text-xs text-blue-700 font-medium">Plat terdeteksi: {region.name} ({region.prefix})</p>
-          <p className="text-xs text-blue-600 mt-1">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3">
+          <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Plat terdeteksi: {region.name} ({region.prefix})</p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
             Kami sedang menambahkan dukungan untuk lebih banyak daerah. Stay tuned!
           </p>
         </div>
@@ -115,12 +115,12 @@ export default function ResultCard({ result }: Props) {
     <div className="card mt-6 space-y-0 overflow-hidden">
 
       {/* ── Header ── */}
-      <div className="flex items-start gap-3 pb-4 border-b border-gray-100">
-        <div className="p-2.5 bg-red-50 rounded-xl">
-          <Car className="w-6 h-6 text-red-600" />
+      <div className="flex items-start gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="p-2.5 bg-red-50 dark:bg-red-900/30 rounded-xl">
+          <Car className="w-6 h-6 text-red-600 dark:text-red-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-gray-900 text-base leading-tight">
+          <p className="font-bold text-gray-900 dark:text-gray-100 text-base leading-tight">
             {[data.merk, data.model, data.tipe].filter(Boolean).join(" ") || "Kendaraan Bermotor"}
           </p>
           <p className="text-xs text-gray-500 mt-0.5 font-mono tracking-widest">{data.plate}</p>
@@ -163,7 +163,7 @@ export default function ResultCard({ result }: Props) {
 
       {/* ── Kepemilikan ── */}
       {(data.nama_pemilik || data.alamat) && (
-        <div className="py-4 border-t border-gray-100 space-y-0">
+        <div className="py-4 border-t border-gray-100 dark:border-gray-800 space-y-0">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
             Data Kepemilikan
           </p>
@@ -187,7 +187,7 @@ export default function ResultCard({ result }: Props) {
 
       {/* ── Masa Berlaku ── */}
       {(data.jatuh_tempo_pajak || data.jatuh_tempo_stnk) && (
-        <div className="py-4 border-t border-gray-100 space-y-0">
+        <div className="py-4 border-t border-gray-100 dark:border-gray-800 space-y-0">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
             Masa Berlaku
           </p>
@@ -214,7 +214,7 @@ export default function ResultCard({ result }: Props) {
 
       {/* ── Tagihan Pajak ── */}
       {(data.pkb_pokok || data.total_tagihan) && (
-        <div className="py-4 border-t border-gray-100 space-y-0">
+        <div className="py-4 border-t border-gray-100 dark:border-gray-800 space-y-0">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
             Rincian Pajak
           </p>
@@ -236,11 +236,11 @@ export default function ResultCard({ result }: Props) {
           {data.total_tagihan !== undefined && (
             <div className={`mt-3 rounded-xl p-4 flex justify-between items-center ${
               totalBayar === 0
-                ? "bg-green-50 border border-green-200"
-                : "bg-red-50 border border-red-200"
+                ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
             }`}>
               <div>
-                <p className="text-sm font-semibold text-gray-700">
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                   {totalBayar === 0 ? "✅ Pajak Lunas" : "⚠️ Total Tagihan"}
                 </p>
                 {hasDenda && totalBayar > 0 && (
@@ -258,7 +258,7 @@ export default function ResultCard({ result }: Props) {
       )}
 
       {/* ── Footer ── */}
-      <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+      <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
         <p className="text-xs text-gray-400">
           {result.cached ? "📦 Dari cache" : "🔴 Live"} · Sumber: {region.name}
         </p>
