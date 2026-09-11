@@ -2,7 +2,7 @@ name: Deploy Frontend → Cloudflare Pages
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths: ["frontend/**"]
 
 jobs:
@@ -34,4 +34,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy frontend/out --project-name=cek-ranmor-indonesia --branch=main
+          command: pages deploy frontend/out --project-name=cek-ranmor-indonesia --branch=master
