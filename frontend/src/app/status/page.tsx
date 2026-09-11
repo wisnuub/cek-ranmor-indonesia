@@ -164,10 +164,10 @@ export default function StatusPage() {
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${d.running ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
                         <div>
                           <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            {REGION_LABEL[region] ?? region}
+                            {d.name ?? REGION_LABEL[d.region ?? region] ?? region}
                           </span>
                           <span className="ml-1.5 text-xs text-gray-400 dark:text-gray-500">
-                            ({REGION_PREFIX[region] ?? region})
+                            ({d.range ?? REGION_PREFIX[d.region ?? region] ?? region})
                           </span>
                           <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${
                             d.running

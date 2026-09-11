@@ -148,6 +148,11 @@ async def get_db_stats(db: AsyncSession) -> dict:
 
 # ── Crawler Job ─────────────────────────────────────────────────────
 
+async def list_crawler_jobs(db: AsyncSession) -> list[CrawlerJob]:
+    result = await db.execute(select(CrawlerJob))
+    return list(result.scalars().all())
+
+
 async def get_or_create_crawler_job(db: AsyncSession, region: str) -> CrawlerJob:
     result = await db.execute(select(CrawlerJob).where(CrawlerJob.region == region))
     job = result.scalar_one_or_none()

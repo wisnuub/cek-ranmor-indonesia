@@ -36,10 +36,11 @@ class VehicleInfo:
     alamat: Optional[str] = None
 
     # Meta
-    sumber:   Optional[str] = None
-    catatan:  Optional[str] = None
-    kabkota:  Optional[str] = None   # Kab/kota asal (dari suffix pattern, diisi crawler)
-    no_rangka: Optional[str] = None  # Nomor rangka (dipakai Bali)
+    sumber:        Optional[str] = None
+    catatan:       Optional[str] = None
+    kabkota:       Optional[str] = None   # Kab/kota asal (dari suffix pattern, diisi crawler)
+    no_rangka:     Optional[str] = None   # Nomor rangka (dipakai Bali)
+    needs_relogin: bool = False           # True jika session/token expired
     errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -50,6 +51,7 @@ class BaseSamsatAdapter(ABC):
     region_code: str
     region_name: str
     needs_nik: bool = False
+    needs_captcha: bool = False
 
     @abstractmethod
     async def fetch(self, plate: str, nik: Optional[str] = None) -> VehicleInfo:

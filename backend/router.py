@@ -51,8 +51,8 @@ PLATE_TO_REGION: dict[str, str] = {
 }
 
 REGION_META: dict[str, dict] = {
-    "jakarta":    {"name": "DKI Jakarta",          "needs_nik": False, "supported": True,  "needs_captcha": True},
-    "jabar":      {"name": "Jawa Barat",            "needs_nik": False, "supported": True},
+    "jakarta":    {"name": "DKI Jakarta",          "needs_nik": False, "supported": True,  "needs_captcha": False, "api_note": "Pakai Google ID token via ADB. Jalankan: python backend/jakarta_refresh_token.py"},
+    "jabar":      {"name": "Jawa Barat",            "needs_nik": False, "supported": True,  "api_note": "API Sambara kadang tidak tersedia, cek manual di bapenda.jabarprov.go.id/infopkb"},
     "banten":     {"name": "Banten",                "needs_nik": True,  "supported": True},
     "jateng":     {"name": "Jawa Tengah",           "needs_nik": False, "supported": True},
     "diy":        {"name": "DI Yogyakarta",         "needs_nik": False, "supported": True},

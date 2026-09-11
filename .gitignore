@@ -44,3 +44,12 @@ cloudflared.exe
 backend/*.db
 backend/*.db-shm
 backend/*.db-wal
+
+# Jakarta session & config (berisi token dan PIN - JANGAN di-commit!)
+backend/jakarta_session.json
+backend/jakarta_config.json
+backend/fresh_token.txt
+backend/logcat_*.txt
+
+# Build artifacts
+frontend/tsconfig.tsbuildinfo

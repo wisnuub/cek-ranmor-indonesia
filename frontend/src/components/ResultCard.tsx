@@ -2,8 +2,9 @@
 
 import type { CheckResponse } from "@/types/vehicle";
 import { formatRupiah } from "@/lib/api";
+import { vehicleDisplayName, isMotorJenis } from "@/lib/vehicleDisplay";
 import {
-  Car, Calendar, Palette, Fuel, MapPin,
+  Car, Bike, Calendar, Palette, Fuel, MapPin,
   AlertCircle, CheckCircle, Clock, ExternalLink,
   ShieldAlert, Info,
 } from "lucide-react";
@@ -110,6 +111,8 @@ export default function ResultCard({ result }: Props) {
     : data.status_pajak === "Belum Lunas"
     ? "badge-red"
     : "badge-gray";
+  const isMotor = isMotorJenis(data.jenis);
+  const VehicleIcon = isMotor ? Bike : Car;
 
   return (
     <div className="card mt-6 space-y-0 overflow-hidden">
@@ -117,11 +120,11 @@ export default function ResultCard({ result }: Props) {
       {/* ── Header ── */}
       <div className="flex items-start gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
         <div className="p-2.5 bg-red-50 dark:bg-red-900/30 rounded-xl">
-          <Car className="w-6 h-6 text-red-600 dark:text-red-400" />
+          <VehicleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-gray-900 dark:text-gray-100 text-base leading-tight">
-            {[data.merk, data.model, data.tipe].filter(Boolean).join(" ") || "Kendaraan Bermotor"}
+            {vehicleDisplayName(data)}
           </p>
           <p className="text-xs text-gray-500 mt-0.5 font-mono tracking-widest">{data.plate}</p>
         </div>
@@ -144,10 +147,10 @@ export default function ResultCard({ result }: Props) {
           Informasi Kendaraan
         </p>
         {[
-          { icon: <Car className="w-3.5 h-3.5" />, label: "Merk / Model", value: [data.merk, data.model].filter(Boolean).join(" / ") },
+          { icon: <VehicleIcon className="w-3.5 h-3.5" />, label: "Merk / Model", value: [data.merk, data.model].filter(Boolean).join(" / ") },
           { icon: <Calendar className="w-3.5 h-3.5" />, label: "Tahun", value: data.tahun?.toString() },
           { icon: <Palette className="w-3.5 h-3.5" />, label: "Warna", value: data.warna },
-          { icon: <Car className="w-3.5 h-3.5" />, label: "Jenis", value: data.jenis },
+          { icon: <VehicleIcon className="w-3.5 h-3.5" />, label: "Jenis", value: data.jenis },
           { icon: <Fuel className="w-3.5 h-3.5" />, label: "Bahan Bakar", value: data.bahan_bakar },
           { icon: null, label: "CC", value: data.cc },
         ].filter(r => r.value).map((row, i) => (

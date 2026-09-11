@@ -17,7 +17,7 @@ from router import get_region_info, REGION_META
 from database import get_db, init_db
 from crud import save_vehicle, search_vehicles, get_db_stats
 from crawler import start_crawler, stop_crawler, crawler_status, add_known_suffix, CRAWLABLE_REGIONS
-from plate_patterns import KNOWN_SUFFIXES, REGION_PRIMARY_PREFIX
+from plate_patterns import KNOWN_SUFFIXES, REGION_PRIMARY_PREFIX, JATENG_KABKOTA_BY_PREFIX, get_region_prefixes
 
 ADMIN_KEY = os.getenv("ADMIN_KEY", "ranmor-admin-2025")
 
@@ -174,11 +174,12 @@ async def _do_check(plate: str, nik: Optional[str], db: AsyncSession):
     vehicle = await adapter.fetch(plate, nik)
 
     result = {
-        "status": "error" if vehicle.errors else "ok",
-        "cached": False,
-        "plate": plate,
-        "region": region_info,
-        "data": vehicle.to_dict(),
+        "status":        "relogin_required" if vehicle.needs_relogin
+                         else ("error" if vehicle.errors else "ok"),
+        "cached":        False,
+        "plate":         plate,
+        "region":        region_info,
+        "data":          vehicle.to_dict(),
     }
 
     # Auto-save successful results to DB
@@ -238,7 +239,8 @@ async def list_regions():
 async def public_crawler_status(db: AsyncSession = Depends(get_db)):
     """Status crawler publik — tidak butuh admin key."""
     from crud import get_db_stats
-    status = crawler_status()
+    from crawler import crawler_status_full
+    status = await crawler_status_full(db)
     stats  = await get_db_stats(db)
     return {
         "crawlers": status,
@@ -254,35 +256,96 @@ async def public_crawler_status(db: AsyncSession = Depends(get_db)):
 async def crawler_start(
     region:     str   = Query(..., description="Region: bali, jabar, jateng, diy"),
     delay:      float = Query(1.5, description="Detik antar request (jangan terlalu cepat)"),
-    mode:       str   = Query("all", description="all | motor | mobil"),
+    mode:       str   = Query("default", description="default (1500-6999) | all | motor | mobil | bus | barang | khusus"),
     skip_after: int   = Query(9999, description="Skip suffix setelah N angka kosong berturut-turut (default 9999 = scan penuh)"),
+    num_lo:     Optional[int] = Query(None, description="Override: angka mulai (untuk jalankan beberapa worker paralel per-slice)"),
+    num_hi:     Optional[int] = Query(None, description="Override: angka akhir (wajib diisi bareng num_lo)"),
+    auto_chain: bool  = Query(False, description="Kalau selesai satu slice, otomatis lanjut ambil slice berikutnya yang belum diklaim sampai max_num"),
+    chunk_size: int   = Query(1000, description="Besar tiap slice untuk auto_chain, e.g. 1000 → 4001-5000, 5001-6000, ..."),
+    max_num:    int   = Query(9999, description="Batas atas nomor plat untuk auto_chain"),
     _: None = Depends(require_admin),
 ):
     """
     Start smart plate crawler untuk satu region.
     Phase 1: coba known suffixes dulu (cepat).
     Phase 2: brute-force sisa kombinasi.
+
+    Untuk jalankan beberapa worker paralel pada region yang sama, isi num_lo/num_hi
+    dengan slice angka yang berbeda-beda per request, misal:
+      /admin/crawler/start?region=jateng&num_lo=1500&num_hi=2999&auto_chain=true
+      /admin/crawler/start?region=jateng&num_lo=3000&num_hi=4000&auto_chain=true
+    Tiap slice punya job_key & checkpoint sendiri jadi tidak saling bentrok. Dengan
+    auto_chain=true, begitu satu worker selesai dengan slice-nya, dia otomatis ambil
+    slice kosong berikutnya (misal 4001-5000, lalu 5001-6000, dst) dari cursor bersama
+    per-region, sampai max_num — semua worker auto_chain di region yang sama berbagi
+    cursor ini jadi tidak akan rebutan slice yang sama.
     """
-    return start_crawler(region, delay=delay, mode=mode, skip_after=skip_after)
+    num_range = (num_lo, num_hi) if num_lo is not None and num_hi is not None else None
+    return start_crawler(region, delay=delay, mode=mode, skip_after=skip_after,
+                          num_range=num_range, auto_chain=auto_chain,
+                          chunk_size=chunk_size, max_num=max_num)
 
 
 @app.post("/admin/crawler/stop")
 async def crawler_stop(
     region: str = Query(...),
+    num_lo:  Optional[int] = Query(None),
+    num_hi:  Optional[int] = Query(None),
+    reason:  str = Query("paused", description="paused (bisa di-resume) | replaced (diganti worker lain) | label bebas"),
     _: None = Depends(require_admin),
 ):
-    return stop_crawler(region)
+    num_range = (num_lo, num_hi) if num_lo is not None and num_hi is not None else None
+    return await stop_crawler(region, num_range=num_range, reason=reason)
 
 
 @app.get("/admin/crawler/status")
-async def crawler_status_endpoint(_: None = Depends(require_admin)):
+async def crawler_status_endpoint(_: None = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    from crawler import crawler_status_full
+    known_suffixes = {r: len(s) for r, s in KNOWN_SUFFIXES.items()}
+    known_suffixes["jateng"] = sum(len(s) for s in JATENG_KABKOTA_BY_PREFIX.values())
     return {
-        "active":            crawler_status(),
+        "active":            await crawler_status_full(db),
         "crawlable_regions": list(CRAWLABLE_REGIONS),
-        "known_suffixes": {
-            r: len(s) for r, s in KNOWN_SUFFIXES.items()
+        "known_suffixes":    known_suffixes,
+        "prefixes": {
+            **REGION_PRIMARY_PREFIX,
+            "jateng": get_region_prefixes("jateng"),
         },
-        "prefixes": REGION_PRIMARY_PREFIX,
+    }
+
+
+@app.get("/admin/jakarta/token-status")
+async def jakarta_token_status(_: None = Depends(require_admin)):
+    """Cek status Google ID token untuk Jakarta adapter."""
+    from adapters.jakarta import _load_session, _get_id_token, _token_is_valid
+    import base64, json, time
+    sess = _load_session()
+    if not sess:
+        return {"status": "no_session", "message": "jakarta_session.json tidak ada"}
+    token = _get_id_token(sess)
+    if not token:
+        return {"status": "no_token", "message": "Token tidak ditemukan di session"}
+    valid = _token_is_valid(token)
+    try:
+        parts = token.split(".")
+        padded = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.b64decode(padded))
+        exp = payload.get("exp", 0)
+        remaining = max(0, exp - int(time.time()))
+        expires_at = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(exp))
+    except Exception:
+        remaining = 0
+        expires_at = "unknown"
+    return {
+        "status":      "valid" if valid else "expired",
+        "valid":       valid,
+        "expires_at":  expires_at,
+        "remaining_s": remaining,
+        "remaining_m": remaining // 60,
+        "refreshed_at": sess.get("refreshed_at"),
+        "message":     "OK" if valid else (
+            "Token expired — jalankan: python backend/jakarta_refresh_token.py"
+        ),
     }
 
 
@@ -290,16 +353,25 @@ async def crawler_status_endpoint(_: None = Depends(require_admin)):
 async def add_suffix(
     region: str = Query(...),
     suffix: str = Query(..., description="Suffix baru, e.g. FCR, ADQ, KK"),
+    prefix: Optional[str] = Query(None, description="Kode plat (wajib untuk jateng: H/G/K/R)"),
     _: None = Depends(require_admin),
 ):
     """Tambahkan suffix yang diketahui valid ke database pattern."""
-    result = add_known_suffix(region, suffix)
+    result = add_known_suffix(region, suffix, prefix)
     return result
 
 
 @app.get("/admin/crawler/suffixes/{region}")
 async def list_suffixes(region: str, _: None = Depends(require_admin)):
     """Lihat daftar known suffixes untuk satu region."""
+    if region == "jateng":
+        return {
+            "region": region,
+            "prefixes": {
+                p: {"count": len(s), "suffixes": s}
+                for p, s in JATENG_KABKOTA_BY_PREFIX.items()
+            },
+        }
     return {
         "region":  region,
         "count":   len(KNOWN_SUFFIXES.get(region, [])),

@@ -16,29 +16,34 @@ Sumber:
 # ────────────────────────────────────────────────────────────────────────────
 
 # Umum (luar Polda Metro Jaya)
+# Nomor 1-999 adalah plat khusus/dinas — plat sipil biasa minimal 4 digit (≥1000)
 NUMBER_RANGES_GENERAL = {
-    "mobil":  (1,    1_999),
-    "motor":  (2_000, 6_999),
-    "bus":    (7_000, 7_999),
-    "barang": (8_000, 8_999),
-    "khusus": (9_000, 9_999),
-    "all":    (1,    9_999),
+    "mobil":   (1_000, 1_999),
+    "motor":   (2_000, 6_999),
+    "bus":     (7_000, 7_999),
+    "barang":  (8_000, 8_999),
+    "khusus":  (9_000, 9_999),
+    "all":     (1_000, 9_999),
+    # Default crawl range: skip nomor rendah (1-1499, jarang dipakai plat sipil)
+    # dan skip bus/barang/khusus (7000+) — fokus mobil-atas + semua motor.
+    "default": (1_500, 6_999),
 }
 
 # Khusus Polda Metro Jaya (plat B — Jakarta, Depok, Tangerang, Bekasi)
 NUMBER_RANGES_B = {
-    "mobil":  (1,    2_999),
-    "motor":  (3_000, 6_999),
-    "bus":    (7_000, 7_999),
-    "barang": (8_000, 8_999),
-    "khusus": (9_000, 9_999),
-    "all":    (1,    9_999),
+    "mobil":   (1_000, 2_999),
+    "motor":   (3_000, 6_999),
+    "bus":     (7_000, 7_999),
+    "barang":  (8_000, 8_999),
+    "khusus":  (9_000, 9_999),
+    "all":     (1_000, 9_999),
+    "default": (1_500, 6_999),
 }
 
-def get_number_range(region: str, mode: str = "all") -> tuple[int, int]:
+def get_number_range(region: str, mode: str = "default") -> tuple[int, int]:
     """Ambil range angka berdasarkan region dan mode kendaraan."""
     ranges = NUMBER_RANGES_B if region == "jakarta" else NUMBER_RANGES_GENERAL
-    return ranges.get(mode, ranges["all"])
+    return ranges.get(mode, ranges["default"])
 
 def guess_jenis(region: str, number: int) -> str:
     """Estimasi jenis kendaraan dari angka plat."""
@@ -108,15 +113,53 @@ JABAR_D_KABKOTA: dict[str, str] = {
     "V": "Kab. Bandung", "Y": "Kab. Bandung", "Z": "Kab. Bandung",
 }
 
-# Gabungan semua kabkota per region
+# Jawa Tengah — MULTI-PREFIX: tiap kode wilayah (G/H/K/R) punya arti suffix
+# BERBEDA, jadi tidak bisa digabung jadi satu dict datar seperti region lain.
+# Sumber: detik.com/jateng (d-7017496), caroline.id, auto2000.co.id
+JATENG_KABKOTA_BY_PREFIX: dict[str, dict[str, str]] = {
+    "H": {  # Semarang & sekitarnya
+        "A": "Kota Semarang", "F": "Kota Semarang", "G": "Kota Semarang", "H": "Kota Semarang",
+        "P": "Kota Semarang", "Q": "Kota Semarang", "R": "Kota Semarang", "S": "Kota Semarang",
+        "W": "Kota Semarang", "X": "Kota Semarang", "Y": "Kota Semarang", "Z": "Kota Semarang",
+        "B": "Kota Salatiga", "K": "Kota Salatiga", "O": "Kota Salatiga", "T": "Kota Salatiga",
+        "C": "Kab. Semarang", "I": "Kab. Semarang", "L": "Kab. Semarang", "V": "Kab. Semarang",
+        "D": "Kab. Kendal",   "M": "Kab. Kendal",   "U": "Kab. Kendal",
+        "E": "Kab. Demak",    "J": "Kab. Demak",    "N": "Kab. Demak",
+    },
+    "G": {  # Pekalongan & sekitarnya
+        "A": "Kota Pekalongan", "H": "Kota Pekalongan", "S": "Kota Pekalongan",
+        "B": "Kab. Pekalongan", "K": "Kab. Pekalongan", "O": "Kab. Pekalongan", "T": "Kab. Pekalongan",
+        "C": "Kab. Batang",     "L": "Kab. Batang",     "V": "Kab. Batang",     "X": "Kab. Batang",
+        "D": "Kab. Pemalang",   "I": "Kab. Pemalang",   "M": "Kab. Pemalang",   "W": "Kab. Pemalang",
+        "E": "Kota Tegal",      "N": "Kota Tegal",      "Y": "Kota Tegal",
+        "F": "Kab. Tegal",      "P": "Kab. Tegal",      "Q": "Kab. Tegal",      "Z": "Kab. Tegal",
+        "G": "Kab. Brebes",     "J": "Kab. Brebes",     "R": "Kab. Brebes",     "U": "Kab. Brebes",
+    },
+    "K": {  # Pati & sekitarnya
+        "A": "Kab. Pati",     "G": "Kab. Pati",     "H": "Kab. Pati",     "S": "Kab. Pati",     "U": "Kab. Pati",
+        "B": "Kab. Kudus",    "K": "Kab. Kudus",    "O": "Kab. Kudus",    "R": "Kab. Kudus",    "T": "Kab. Kudus",
+        "C": "Kab. Jepara",   "L": "Kab. Jepara",   "Q": "Kab. Jepara",   "V": "Kab. Jepara",
+        "D": "Kab. Rembang",  "I": "Kab. Rembang",  "M": "Kab. Rembang",  "W": "Kab. Rembang",
+        "E": "Kab. Blora",    "N": "Kab. Blora",    "X": "Kab. Blora",    "Y": "Kab. Blora",
+        "F": "Kab. Grobogan", "J": "Kab. Grobogan", "P": "Kab. Grobogan", "Z": "Kab. Grobogan",
+    },
+    "R": {  # Banyumas & sekitarnya — hanya Kab. Banyumas terdokumentasi;
+            # Cilacap/Purbalingga/Banjarnegara pakai kombinasi huruf lain (belum diketahui)
+        "A": "Kab. Banyumas", "E": "Kab. Banyumas", "G": "Kab. Banyumas", "H": "Kab. Banyumas",
+        "J": "Kab. Banyumas", "S": "Kab. Banyumas", "X": "Kab. Banyumas",
+    },
+}
+
+# Gabungan semua kabkota per region (single-prefix regions)
 KABKOTA_MAP: dict[str, dict[str, str]] = {
     "bali":    BALI_KABKOTA,
     "jakarta": JAKARTA_KABKOTA,
     "jabar":   JABAR_D_KABKOTA,
-    # Jateng, DIY, dll — first letters belum terdokumentasi lengkap, pakai semua A-Z
+    # Jateng: lihat JATENG_KABKOTA_BY_PREFIX (multi-prefix, tidak datar)
+    # DIY, dll — first letters belum terdokumentasi lengkap, pakai semua A-Z
 }
 
-# Prefix utama per region
+# Prefix utama per region (dipakai untuk region single-prefix / tampilan info)
 REGION_PREFIX: dict[str, str] = {
     "bali":    "DK",
     "jabar":   "D",
@@ -124,6 +167,19 @@ REGION_PREFIX: dict[str, str] = {
     "diy":     "AB",
     "jakarta": "B",
 }
+
+# Region dengan LEBIH DARI SATU prefix plat (dicrawl semua secara berurutan)
+REGION_PREFIXES: dict[str, list[str]] = {
+    "jateng": ["H", "G", "K", "R"],  # H (Semarang) duluan — paling padat & sudah terverifikasi
+}
+
+
+def get_region_prefixes(region: str) -> list[str]:
+    """Daftar semua prefix plat yang perlu di-crawl untuk satu region."""
+    if region in REGION_PREFIXES:
+        return REGION_PREFIXES[region]
+    p = REGION_PREFIX.get(region)
+    return [p] if p else []
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -139,7 +195,14 @@ ALL_LETTERS = list(string.ascii_uppercase)
 SAFE_LETTERS = [c for c in ALL_LETTERS if c not in ("O",)]  # Bali pakai I, jadi hanya skip O
 
 
-def generate_smart_suffixes(region: str) -> list[str]:
+def _kabkota_for(region: str, prefix: str | None = None) -> dict[str, str]:
+    """Resolve the kab/kota-by-suffix-first-letter dict for a region (+ plate prefix)."""
+    if region == "jateng" and prefix:
+        return JATENG_KABKOTA_BY_PREFIX.get(prefix.upper(), {})
+    return KABKOTA_MAP.get(region, {})
+
+
+def generate_smart_suffixes(region: str, prefix: str | None = None) -> list[str]:
     """
     Generate suffix dalam urutan yang paling efisien.
 
@@ -152,8 +215,11 @@ def generate_smart_suffixes(region: str) -> list[str]:
     2. Three-letter: known_first + A-Z + A-Z
     3. Brute-force: unknown first letters (2-letter)
     4. Brute-force: unknown first letters (3-letter)
+
+    prefix: kode plat spesifik (relevan untuk region multi-prefix seperti
+    jateng — G/H/K/R punya makna suffix yang berbeda-beda).
     """
-    kabkota = KABKOTA_MAP.get(region, {})
+    kabkota = _kabkota_for(region, prefix)
     known_firsts = list(kabkota.keys())
     unknown_firsts = [c for c in ALL_LETTERS if c not in known_firsts]
 
@@ -190,11 +256,11 @@ def generate_smart_suffixes(region: str) -> list[str]:
     return result
 
 
-def get_kabkota_from_suffix(region: str, suffix: str) -> str:
-    """Identifikasi kab/kota dari suffix pertama."""
+def get_kabkota_from_suffix(region: str, suffix: str, prefix: str | None = None) -> str:
+    """Identifikasi kab/kota dari suffix pertama (+ plate prefix untuk region multi-prefix)."""
     if not suffix:
         return "Unknown"
-    kabkota = KABKOTA_MAP.get(region, {})
+    kabkota = _kabkota_for(region, prefix)
     return kabkota.get(suffix[0].upper(), "Unknown")
 
 

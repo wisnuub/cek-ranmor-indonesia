@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Search, ChevronDown, MapPin, RefreshCw, Database } from "lucide-react";
 import Link from "next/link";
 import { checkVehicle, detectRegion } from "@/lib/api";
@@ -48,9 +48,8 @@ export default function HomePage() {
     }
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanPlate = plate.trim();
+  const performCheck = useCallback(async (rawPlate: string, rawNik?: string) => {
+    const cleanPlate = rawPlate.trim();
     if (!cleanPlate || cleanPlate.length < 4) {
       setError("Masukkan nomor polisi yang valid (min. 4 karakter)");
       return;
@@ -61,7 +60,7 @@ export default function HomePage() {
     setResult(null);
 
     try {
-      const res = await checkVehicle(cleanPlate, nik || undefined);
+      const res = await checkVehicle(cleanPlate, rawNik || undefined);
       setResult(res);
 
       // If NIK required, prompt user
@@ -74,7 +73,26 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
+  }, [showNik]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performCheck(plate, nik);
   };
+
+  // Tombol "Cek Pajak Live" (mis. dari halaman /cari) mengarah ke "/?plate=XXX"
+  // — pre-fill nomor polisi dari query string lalu langsung jalankan pengecekan.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const plateParam = params.get("plate");
+    if (!plateParam) return;
+
+    const clean = plateParam.toUpperCase().replace(/[^A-Z0-9 ]/g, "");
+    setPlate(clean);
+    detectRegion(clean.replace(/ /g, "")).then(setDetectedRegion).catch(() => {});
+    performCheck(clean);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-600 via-red-600 to-gray-50 dark:to-gray-950">

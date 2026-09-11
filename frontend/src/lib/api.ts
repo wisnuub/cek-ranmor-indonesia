@@ -16,6 +16,9 @@ export interface CrawlerRegionStatus {
   suffix_found: number;
   consecutive_empty: number;
   status: string;
+  name?: string;
+  region?: string;
+  range?: string;
 }
 
 export interface CrawlerStatus {

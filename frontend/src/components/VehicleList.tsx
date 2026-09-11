@@ -3,8 +3,9 @@
 import { useState } from "react";
 import type { VehicleData } from "@/types/vehicle";
 import { formatRupiah } from "@/lib/api";
+import { vehicleDisplayName, isMotorJenis } from "@/lib/vehicleDisplay";
 import {
-  Car, Calendar, Palette, MapPin, AlertCircle,
+  Car, Bike, Calendar, Palette, MapPin, AlertCircle,
   ChevronDown, ChevronUp, Clock, ExternalLink,
 } from "lucide-react";
 
@@ -64,8 +65,9 @@ export default function VehicleList({ results, total, loading }: Props) {
 function VehicleCard({ vehicle: v }: { vehicle: VehicleData }) {
   const [expanded, setExpanded] = useState(false);
 
-  const name    = [v.merk, v.model, v.tipe].filter(Boolean).join(" ") || "Kendaraan";
-  const isMotor = v.jenis?.toLowerCase().includes("motor");
+  const name    = vehicleDisplayName(v, "Kendaraan");
+  const isMotor = isMotorJenis(v.jenis);
+  const VehicleIcon = isMotor ? Bike : Car;
   const hasTax  = v.total_tagihan !== undefined && v.total_tagihan !== null;
   const lunas   = v.status_pajak === "Lunas" || v.total_tagihan === 0;
 
@@ -93,7 +95,7 @@ function VehicleCard({ vehicle: v }: { vehicle: VehicleData }) {
               ? "bg-orange-50 dark:bg-orange-900/30"
               : "bg-blue-50 dark:bg-blue-900/30"
           }`}>
-            <Car className={`w-5 h-5 ${
+            <VehicleIcon className={`w-5 h-5 ${
               isMotor ? "text-orange-500" : "text-blue-500"
             }`} />
           </div>
