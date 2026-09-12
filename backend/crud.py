@@ -6,6 +6,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from models import Vehicle, CrawlerJob
 from adapters.base import VehicleInfo
+from jenis_normalize import infer_jenis
 
 
 async def save_vehicle(db: AsyncSession, info: VehicleInfo) -> Optional[Vehicle]:
@@ -27,6 +28,7 @@ async def save_vehicle(db: AsyncSession, info: VehicleInfo) -> Optional[Vehicle]
         "tahun":             info.tahun,
         "warna":             info.warna,
         "jenis":             info.jenis,
+        "jenis_kategori":    infer_jenis(info.jenis, info.merk, info.model, info.tipe),
         "bahan_bakar":       info.bahan_bakar,
         "cc":                info.cc,
         "pkb_pokok":         info.pkb_pokok,
@@ -95,7 +97,7 @@ async def search_vehicles(
     if merk:
         filters.append(Vehicle.merk.ilike(f"%{merk}%"))
     if jenis:
-        filters.append(Vehicle.jenis.ilike(f"%{jenis}%"))
+        filters.append(Vehicle.jenis_kategori == jenis)
     if warna:
         filters.append(Vehicle.warna.ilike(f"%{warna}%"))
     if kabkota:

@@ -22,6 +22,7 @@ class Vehicle(Base):
     tahun       = Column(Integer)
     warna       = Column(String(100))
     jenis       = Column(String(100))
+    jenis_kategori = Column(String(30))   # kategori baku hasil normalisasi, dipakai filter (lihat jenis_normalize.py)
     bahan_bakar = Column(String(50))
     cc          = Column(String(20))
 
@@ -52,6 +53,7 @@ class Vehicle(Base):
         Index("ix_vehicles_merk_model", "merk", "model"),
         Index("ix_vehicles_tahun",      "tahun"),
         Index("ix_vehicles_jenis",      "jenis"),
+        Index("ix_vehicles_jenis_kategori", "jenis_kategori"),
         Index("ix_vehicles_kabkota",    "kabkota"),
     )
 
